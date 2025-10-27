@@ -2,3 +2,6 @@
 
 A virtual keyboard for CC:T with Next/Previous/Select/Submit buttons to make it really annoying.
 Uses 2 redstone relays to control the buttons.
+
+Here's a picture of a setup with the relays:
+![keyboard setup](https://ellinet13.github.io/READMEAssets/CCKeyboard.png)
