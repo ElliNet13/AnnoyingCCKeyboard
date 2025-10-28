@@ -1,5 +1,7 @@
 -- Virtual Keyboard for CC:T with Next/Previous/Select
 
+math.randomseed(os.epoch("utc"))
+
 -- Wrap monitor
 local mon = peripheral.find("monitor")  -- replace with your monitor side if needed
 mon.setTextScale(1)
@@ -15,12 +17,12 @@ if not leftRelay or not rightRelay then
     return
 end
 
--- Keyboard layout
+-- Keyboard layout (the empty strings are to waste turns and to align keys)
 local keys = {
-    {"1","2","3","4","5","6","7","8","9","0"},
-    {"q","w","e","r","t","y","u","i","o","p"},
-    {"a","s","d","f","g","h","j","k","l"},
-    {"z","x","c","v","b","n","m"},
+    {"1","2","3","4","5","6","7","8","9","0", ""},
+    {"q","w","e","r","t","y","u","i","o","p", ""},
+    {"a","s","d","f","g","h","j","k","l", "", ""},
+    {"z","x","c","v","b","n","m", "", "", "", ""},
     {"SPACE","BACK"}
 }
 
@@ -65,12 +67,53 @@ local function drawNavButtons()
     end
 end
 
+-- Function to randomize both keys within rows and the order of rows (except the bottom one)
+local function randomizeKeys()
+    -- Shuffle keys within each row
+    for i = 1, #keys do
+        for j = #keys[i], 2, -1 do
+            local k = math.random(j)
+            keys[i][j], keys[i][k] = keys[i][k], keys[i][j]
+        end
+    end
+
+    -- Shuffle the rows, except the bottom one
+    for i = #keys - 1, 2, -1 do
+        local k = math.random(i)
+        keys[i], keys[k] = keys[k], keys[i]
+    end
+end
+
+-- Function to go to the next line on the monitor
+local function nextLine()
+    local x, y = mon.getCursorPos()
+    mon.setCursorPos(1, y + 1)
+end
+
+local turns = 1
+local randomAmmountTurns = math.random(10, 20)
+local lastChangeTurn = 0
+
 -- Draw keyboard + navigation buttons
 local function drawKeyboard()
     mon.clear()
-    for row=1,#keys do
+    mon.setCursorPos(1,1)
+
+    -- Check if it's time to change layout
+    if turns - lastChangeTurn >= randomAmmountTurns then
+        randomAmmountTurns = math.random(10, 20)
+        lastChangeTurn = turns
+        mon.write("It's about time to get a new keyboard layout...")
+        nextLine()
+        os.sleep(2)
+        mon.clear()
+        randomizeKeys()
+    end
+
+    -- Draw keys
+    for row = 1, #keys do
         local colPos = 1
-        for col=1,#keys[row] do
+        for col = 1, #keys[row] do
             local selected = (row == selRow and col == selCol)
             drawKey(colPos, row, keys[row][col], selected)
             colPos = colPos + #keys[row][col] + 3
@@ -80,9 +123,13 @@ local function drawKeyboard()
     -- Draw navigation buttons
     drawNavButtons()
 
-    -- Show current input
+    -- Show current input and turns info
     mon.setCursorPos(1, #keys + 4)
-    mon.write("Current: "..input)
+    mon.write("Current: " .. input)
+    mon.setCursorPos(1, #keys + 6)
+    mon.write("Turns: " .. turns)
+    nextLine()
+    mon.write("Turns left: " .. (randomAmmountTurns - (turns - lastChangeTurn)))
 end
 
 -- Move selection
@@ -125,21 +172,29 @@ while true do
     print("redstone")
     os.sleep(0.1)
     local keysPressed = getKeysPressed()
+    local hasChanged = false
     if keysPressed["select"] then
         selectKey()
         print("selectKey")
+        hasChanged = true
     end
     if keysPressed["submit"] then
         print("submit", input)
         input = ""
+        hasChanged = true
     end
     if keysPressed["previous"] then
         moveSelection("PREV")
         print("moveSelection PREV")
+        hasChanged = true
     end
     if keysPressed["next"] then
         moveSelection("NEXT")
         print("moveSelection NEXT")
+        hasChanged = true
+    end
+    if hasChanged then
+        turns = turns + 1
     end
     drawKeyboard()
     print("drawKeyboard")
